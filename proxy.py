@@ -4,57 +4,60 @@ import argparse
 import tornado.httpclient
 import tornado.ioloop
 import tornado.web
+import tornado.gen
 
 
 class ProxyHandler(tornado.web.RequestHandler):
 
-    @tornado.web.asynchronous
+    @tornado.gen.coroutine
     def get(self, *args, **kwargs):
-        return self.proxy_request(*args, **kwargs)
+        yield self.proxy_request(*args, **kwargs)
 
-    @tornado.web.asynchronous
+    @tornado.gen.coroutine
     def post(self, *args, **kwargs):
-        return self.proxy_request(*args, **kwargs)
+        yield self.proxy_request(*args, **kwargs)
 
-    @tornado.web.asynchronous
+    @tornado.gen.coroutine
     def put(self, *args, **kwargs):
-        return self.proxy_request(*args, **kwargs)
+        yield self.proxy_request(*args, **kwargs)
 
-    @tornado.web.asynchronous
+    @tornado.gen.coroutine
     def delete(self, *args, **kwargs):
-        return self.proxy_request(*args, **kwargs)
+        yield self.proxy_request(*args, **kwargs)
 
-    @tornado.web.asynchronous
+    @tornado.gen.coroutine
     def patch(self, *args, **kwargs):
-        return self.proxy_request(*args, **kwargs)
+        yield self.proxy_request(*args, **kwargs)
 
-    @tornado.web.asynchronous
+    @tornado.gen.coroutine
     def head(self, *args, **kwargs):
-        return self.proxy_request(*args, **kwargs)
+        yield self.proxy_request(*args, **kwargs)
 
-    @tornado.web.asynchronous
+    @tornado.gen.coroutine
     def options(self, *args, **kwargs):
-        return self.proxy_request(*args, **kwargs)
+        yield self.proxy_request(*args, **kwargs)
 
+    @tornado.gen.coroutine
     def proxy_request(self, *args, **kwargs):
-        # todo: check cache for stored result
+        response = yield self.proxy_async_request()
 
+        self.write(response.body)
+        self.finish()
+
+    @tornado.gen.coroutine
+    def proxy_async_request(self):
         # making transparent request
         request = tornado.httpclient.HTTPRequest(
-            url=self.settings.get('uri') + self.request.path,
+            url=self.settings.get('uri') + self.request.uri,
             method=self.request.method,
             headers=self.request.headers,
             body=self.request.body if len(self.request.body) > 0 else None
         )
         # start async request
         http = tornado.httpclient.AsyncHTTPClient()
-        http.fetch(request, callback=self.on_response)
+        response = yield http.fetch(request, raise_error=False)
 
-    def on_response(self, response):
-        if 200 <= response.code < 300:  # OK
-            pass  # todo: caching result
-        self.write(response.body)  # todo: transparent result return
-        self.finish()
+        return response
 
 
 def make_app(uri):
